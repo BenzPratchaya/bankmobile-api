@@ -38,9 +38,7 @@ module.exports = {
             id: "desc",
           },
           where: {
-            status: {
-              not: "delete",
-            },
+            status: "instock",
           },
         });
         res.json(products);

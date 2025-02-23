@@ -86,10 +86,35 @@ module.exports = {
           },
           data: {
             status: "paid",
-          },
-          payDate: new Date(),
+            payDate: new Date(),
+          },    
         });
         res.json({ message: "success" });
+      } catch (error) {
+        res.status(500).json({ message: error.message });
+      }
+    },
+    dashboard: async (req, res) => {
+      try {
+        const income = await prisma.sell.aggregate({
+          _sum: {
+            price: true,
+          },
+          where: {
+            status: "paid",
+          },
+        });
+        const countRepair = await prisma.service.count();
+        const countSell = await prisma.sell.count({
+          where: {
+            status: "paid",
+          },
+        });
+        return res.json({
+          totalIncome: income._sum.price,
+          totalRepair: countRepair,
+          totalSale: countSell,
+        });
       } catch (error) {
         res.status(500).json({ message: error.message });
       }
