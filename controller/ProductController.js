@@ -1,5 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
+const { skip } = require("node:test");
 const prisma = new PrismaClient();
+const XLSX = require("xlsx");
 
 module.exports = {
   ProductController: {
@@ -33,6 +35,16 @@ module.exports = {
     },
     list: async (req, res) => {
       try {
+        const page = req.params.page ?? 1;
+        const limit = 8;
+        const skip = (page - 1) * limit;
+        const totalRows = await prisma.product.count({
+          where: {
+            status: "instock",
+          },
+        });
+        const totalPages = Math.ceil(totalRows / limit);
+
         const products = await prisma.product.findMany({
           orderBy: {
             id: "desc",
@@ -40,8 +52,10 @@ module.exports = {
           where: {
             status: "instock",
           },
+          skip: skip,
+          take: limit,
         });
-        res.json(products);
+        res.json({ products, totalPages, page, totalRows });
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
@@ -74,6 +88,22 @@ module.exports = {
           data: { status: "delete" },
         });
         res.json({ message: "success" });
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
+    },
+    exportToExcel: async (req, res) => {
+      try {
+        const data = req.body.products;
+        const fileName = "products.xlsx";
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+
+        // write to file
+        XLSX.writeFile(workbook, "./uploads/" + fileName);
+        res.json({ fileName: fileName });
       } catch (error) {
         res.status(500).json({ error: error.message });
       }
